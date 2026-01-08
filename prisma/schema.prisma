@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User roles enum
+enum UserRole {
+  ADMIN
+  SALES_PERSON
+  CUSTOMER_SERVICE
+  STUDIO
+  SALES
+}
+
+// User model
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  name      String   @unique
+  password  String
+  role      UserRole @default(SALES_PERSON)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Location model
+model Location {
+  id              String   @id @default(uuid())
+  name            String   // City/Location name
+  code            String?  // Short code for location (e.g., "MOM" for "Mall of Multan")
+  salesPersonIds  String[] // Array of user IDs assigned to this location
+  dates           String[] // Array of date strings (ISO format: YYYY-MM-DD) - for location assignment dates
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("locations")
+}
+
+// CollectionDate model - separate from location assignment dates
+model CollectionDate {
+  id         String   @id @default(uuid())
+  locationId String   // Reference to location
+  date       String   // Date string (ISO format: YYYY-MM-DD)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([locationId, date]) // Ensure unique date per location
+  @@map("collection_dates")
+}
+
+// Booking status enum
+enum BookingStatus {
+  BOOKED
+  CONFIRMED
+  TBC
+  CANCELLED
+  NO_ANSWER
+  WLMK
+}
+
+// Payment method enum
+enum PaymentMethod {
+  CASH
+  CARD
+  NOT_PAID
+}
+
+// Booking model
+model Booking {
+  id                    String        @id @default(uuid())
+  customerName          String
+  phoneNumber           String        // 11 digits
+  emergencyPhoneNumber  String?       // Optional, 11 digits if provided
+  photoshootType        String        // children, family, couple, maternity
+  sessionDate           String?       // ISO date string (YYYY-MM-DD), nullable for TBC
+  sessionTime           String?       // Time string (HH:MM format), nullable for TBC
+  specialRequestDate    String?       // Optional special request date
+  specialRequestTime    String?       // Optional special request time
+  paymentMethod         PaymentMethod
+  status                BookingStatus @default(BOOKED)
+  notes                 String?       // Optional notes for the booking (customer care notes)
+  studioNotes           String?       // Optional studio-specific notes
+  studioNumber          Int?          // Studio number assigned to the booking (unique per location)
+  signaturePath         String?       // Path to saved signature image file
+  consentFormSigned     Boolean       @default(false) // Whether consent form has been signed
+  collectionDate        String?       // ISO date string (YYYY-MM-DD) - Date when customer should collect photos
+  collectionTime        String?       // Time string (HH:MM format) - Time when customer should collect photos
+  locationId            String?       // Reference to location
+  salesPersonId         String        // Reference to sales person who created the booking
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Note: We're using manual ID references instead of Prisma relations
+  // because Location doesn't have a direct relation structure for bookings
+  // Studio number uniqueness per location is enforced at application level
+  // because Prisma doesn't support partial unique indexes for nullable fields
+  @@index([locationId, studioNumber]) // Index for efficient queries
+  @@map("bookings")
+}
+
+// SessionTime model
+model SessionTime {
+  id        String   @id @default(uuid())
+  time      String   // Time string in HH:MM format (e.g., "09:00", "09:15")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([time])
+  @@map("session_times")
+}
+
+// SpecialRequestTime model
+model SpecialRequestTime {
+  id        String   @id @default(uuid())
+  time      String   // Time string in HH:MM format (e.g., "09:10", "09:50")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([time])
+  @@map("special_request_times")
+}
+
