@@ -8,6 +8,7 @@ const {
   deleteBooking,
   allocateStudioNumber,
   saveConsentFormSignature,
+  getBookingsBySalesPerson,
 } = require('../controllers/booking.controller');
 const authMiddleware = require('../middleware/auth');
 
@@ -183,6 +184,7 @@ const updateBookingValidation = [
 // Routes
 router.post('/', authMiddleware, createBookingValidation, createBooking);
 router.get('/', authMiddleware, getBookings);
+router.get('/stats/by-sales-person', authMiddleware, getBookingsBySalesPerson);
 router.get('/:id', authMiddleware, getBookingById);
 router.put('/:id', authMiddleware, updateBookingValidation, updateBooking);
 router.delete('/:id', authMiddleware, deleteBooking);

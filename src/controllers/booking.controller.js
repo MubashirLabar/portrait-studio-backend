@@ -613,6 +613,115 @@ const saveConsentFormSignature = async (req, res) => {
   }
 };
 
+/**
+ * Get booking statistics grouped by sales person
+ * Returns sales persons with their booking counts (today or total)
+ */
+const getBookingsBySalesPerson = async (req, res) => {
+  try {
+    const { type = 'total', locationId } = req.query;
+    const user = req.user;
+
+    // Build where clause
+    const where = {
+      // Exclude NOT_PAID bookings
+      paymentMethod: {
+        not: 'NOT_PAID',
+      },
+    };
+
+    // Filter by location if provided
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
+    // Filter by date if type is 'today'
+    if (type === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      where.createdAt = {
+        gte: today.toISOString(),
+        lt: tomorrow.toISOString(),
+      };
+    }
+
+    // Role-based filtering
+    if (user.role === 'SALES_PERSON') {
+      // Sales persons can only see their own bookings
+      where.salesPersonId = user.id;
+    }
+    // ADMIN and other roles can see all bookings
+
+    // Get all bookings matching the criteria
+    const bookings = await prisma.booking.findMany({
+      where,
+      select: {
+        salesPersonId: true,
+      },
+    });
+
+    // Group bookings by sales person and count
+    const salesPersonCounts = {};
+    
+    for (const booking of bookings) {
+      if (booking.salesPersonId) {
+        if (!salesPersonCounts[booking.salesPersonId]) {
+          salesPersonCounts[booking.salesPersonId] = 0;
+        }
+        salesPersonCounts[booking.salesPersonId]++;
+      }
+    }
+
+    // Fetch sales person details for each unique sales person ID
+    const salesPersonIds = Object.keys(salesPersonCounts);
+    const salesPersons = await prisma.user.findMany({
+      where: {
+        id: { in: salesPersonIds },
+        role: 'SALES_PERSON',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    // Create a map for quick lookup
+    const salesPersonMap = new Map(
+      salesPersons.map((sp) => [sp.id, sp])
+    );
+
+    // Build the response array with sales person details and counts
+    const result = salesPersonIds
+      .map((salesPersonId) => {
+        const salesPerson = salesPersonMap.get(salesPersonId);
+        if (!salesPerson) return null;
+
+        return {
+          id: salesPerson.id,
+          salesPersonName: salesPerson.name || salesPerson.email || 'Unknown',
+          salesPersonEmail: salesPerson.email,
+          bookingCount: salesPersonCounts[salesPersonId],
+        };
+      })
+      .filter((item) => item !== null)
+      .sort((a, b) => b.bookingCount - a.bookingCount); // Sort by booking count descending
+
+    return successResponse(
+      res,
+      { salesPersons: result },
+      `${type === 'today' ? 'Today' : 'Total'} bookings retrieved successfully`,
+      200
+    );
+  } catch (error) {
+    console.error('Get bookings by sales person error:', error);
+    return errorResponse(res, 'Internal server error', 500);
+  }
+};
+
 module.exports = {
   createBooking,
   getBookings,
@@ -621,5 +730,6 @@ module.exports = {
   deleteBooking,
   allocateStudioNumber,
   saveConsentFormSignature,
+  getBookingsBySalesPerson,
 };
 
