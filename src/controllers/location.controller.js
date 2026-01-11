@@ -62,6 +62,31 @@ const createLocation = async (req, res) => {
       );
     }
 
+    // Remove sales persons from previous locations
+    // Find all locations that have any of the sales person IDs
+    const locationsWithSalesPersons = await prisma.location.findMany({
+      where: {
+        salesPersonIds: {
+          hasSome: salesPersonIds, // Check if any sales person ID exists in the array
+        },
+      },
+    });
+
+    // Remove the sales person IDs from those locations
+    if (locationsWithSalesPersons.length > 0) {
+      await Promise.all(
+        locationsWithSalesPersons.map((loc) => {
+          const updatedSalesPersonIds = loc.salesPersonIds.filter(
+            (id) => !salesPersonIds.includes(id)
+          );
+          return prisma.location.update({
+            where: { id: loc.id },
+            data: { salesPersonIds: updatedSalesPersonIds },
+          });
+        })
+      );
+    }
+
     // Generate location code
     const code = generateLocationCode(name.trim());
 
@@ -289,6 +314,32 @@ const updateLocation = async (req, res) => {
           res,
           "One or more sales person IDs are invalid",
           400
+        );
+      }
+
+      // Remove sales persons from previous locations (excluding current location)
+      // Find all locations (except current) that have any of the sales person IDs
+      const locationsWithSalesPersons = await prisma.location.findMany({
+        where: {
+          id: { not: id }, // Exclude current location
+          salesPersonIds: {
+            hasSome: salesPersonIds, // Check if any sales person ID exists in the array
+          },
+        },
+      });
+
+      // Remove the sales person IDs from those locations
+      if (locationsWithSalesPersons.length > 0) {
+        await Promise.all(
+          locationsWithSalesPersons.map((loc) => {
+            const updatedSalesPersonIds = loc.salesPersonIds.filter(
+              (id) => !salesPersonIds.includes(id)
+            );
+            return prisma.location.update({
+              where: { id: loc.id },
+              data: { salesPersonIds: updatedSalesPersonIds },
+            });
+          })
         );
       }
 

@@ -153,21 +153,57 @@ const updateBookingValidation = [
     .isIn(['children', 'family', 'couple', 'maternity'])
     .withMessage('Invalid photoshoot type'),
   body('sessionDate')
-    .optional()
-    .matches(/^\d{4}-\d{2}-\d{2}$/)
-    .withMessage('Session date must be in YYYY-MM-DD format'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow null or undefined
+      if (!value || value === null || value === '') {
+        return true;
+      }
+      // If provided, validate format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw new Error('Session date must be in YYYY-MM-DD format');
+      }
+      return true;
+    }),
   body('sessionTime')
-    .optional()
-    .matches(/^\d{2}:\d{2}$/)
-    .withMessage('Session time must be in HH:MM format'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow null or undefined
+      if (!value || value === null || value === '') {
+        return true;
+      }
+      // If provided, validate format
+      if (!/^\d{2}:\d{2}$/.test(value)) {
+        throw new Error('Session time must be in HH:MM format');
+      }
+      return true;
+    }),
   body('specialRequestDate')
-    .optional()
-    .matches(/^\d{4}-\d{2}-\d{2}$/)
-    .withMessage('Special request date must be in YYYY-MM-DD format'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow null or undefined
+      if (!value || value === null || value === '') {
+        return true;
+      }
+      // If provided, validate format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        throw new Error('Special request date must be in YYYY-MM-DD format');
+      }
+      return true;
+    }),
   body('specialRequestTime')
-    .optional()
-    .matches(/^\d{2}:\d{2}$/)
-    .withMessage('Special request time must be in HH:MM format'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow null or undefined
+      if (!value || value === null || value === '') {
+        return true;
+      }
+      // If provided, validate format
+      if (!/^\d{2}:\d{2}$/.test(value)) {
+        throw new Error('Special request time must be in HH:MM format');
+      }
+      return true;
+    }),
   body('paymentMethod')
     .optional()
     .isIn(['cash', 'card', 'not-paid'])

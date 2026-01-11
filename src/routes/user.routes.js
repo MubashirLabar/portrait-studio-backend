@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { createSalesPerson, getSalesPersons, createCustomerCare, getCustomerCares, createStudioAssistant, getStudioAssistants } = require('../controllers/user.controller');
+const { createSalesPerson, getSalesPersons, deleteSalesPerson, createCustomerCare, getCustomerCares, createStudioAssistant, getStudioAssistants } = require('../controllers/user.controller');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -58,6 +58,7 @@ router.post(
   createSalesPerson
 );
 router.get('/sales-person', authMiddleware, getSalesPersons);
+router.delete('/sales-person/:id', authMiddleware, deleteSalesPerson);
 
 router.post(
   '/customer-care',

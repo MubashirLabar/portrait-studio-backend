@@ -103,6 +103,49 @@ const getSalesPersons = async (req, res) => {
 };
 
 /**
+ * Delete a sales person (admin only)
+ */
+const deleteSalesPerson = async (req, res) => {
+  try {
+    // Ensure only admin can delete sales persons
+    if (req.user.role !== 'ADMIN') {
+      return errorResponse(res, 'Only admin can delete sales persons', 403);
+    }
+
+    const { id } = req.params;
+
+    // Check if sales person exists
+    const existingSalesPerson = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!existingSalesPerson) {
+      return errorResponse(res, 'Sales person not found', 404);
+    }
+
+    // Check if user is a sales person
+    if (existingSalesPerson.role !== 'SALES_PERSON') {
+      return errorResponse(res, 'User is not a sales person', 400);
+    }
+
+    // Delete the sales person
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    return successResponse(
+      res,
+      null,
+      'Sales person deleted successfully',
+      200
+    );
+  } catch (error) {
+    console.error('Delete sales person error:', error);
+    return errorResponse(res, 'Internal server error', 500);
+  }
+};
+
+/**
  * Create a new customer care user (admin only)
  */
 const createCustomerCare = async (req, res) => {
@@ -303,6 +346,7 @@ const getStudioAssistants = async (req, res) => {
 module.exports = {
   createSalesPerson,
   getSalesPersons,
+  deleteSalesPerson,
   createCustomerCare,
   getCustomerCares,
   createStudioAssistant,

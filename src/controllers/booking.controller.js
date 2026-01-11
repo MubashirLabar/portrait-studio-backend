@@ -27,6 +27,15 @@ const createBooking = async (req, res) => {
       notes,
     } = req.body;
 
+    // Debug logging to check what values are being received
+    console.log('Booking creation request:', {
+      sessionDate,
+      sessionTime,
+      specialRequestDate,
+      specialRequestTime,
+      status
+    });
+
     // Validate phone number is exactly 11 digits
     const phoneDigits = phoneNumber.replace(/\D/g, '');
     if (phoneDigits.length !== 11) {
@@ -57,8 +66,25 @@ const createBooking = async (req, res) => {
 
     // For TBC status, allow null dates/times
     // For other statuses, validate that date and time are provided
+    // Either sessionDate/sessionTime OR specialRequestDate/specialRequestTime must be provided
     if (bookingStatus !== 'TBC') {
-      if (!sessionDate || !sessionTime) {
+      // Check for regular session (both date and time must be truthy and non-empty strings)
+      const hasRegularSession = sessionDate && 
+                                sessionTime && 
+                                typeof sessionDate === 'string' &&
+                                typeof sessionTime === 'string' &&
+                                sessionDate.trim() !== '' && 
+                                sessionTime.trim() !== '';
+      
+      // Check for special request (both date and time must be truthy and non-empty strings)
+      const hasSpecialRequest = specialRequestDate && 
+                                specialRequestTime && 
+                                typeof specialRequestDate === 'string' &&
+                                typeof specialRequestTime === 'string' &&
+                                specialRequestDate.trim() !== '' && 
+                                specialRequestTime.trim() !== '';
+      
+      if (!hasRegularSession && !hasSpecialRequest) {
         return errorResponse(res, 'Session date and time are required for booked status', 400);
       }
     }
@@ -314,8 +340,8 @@ const updateBooking = async (req, res) => {
         : null;
     }
     if (photoshootType) updateData.photoshootType = photoshootType;
-    if (sessionDate) updateData.sessionDate = sessionDate;
-    if (sessionTime) updateData.sessionTime = sessionTime;
+    if (sessionDate !== undefined) updateData.sessionDate = sessionDate || null;
+    if (sessionTime !== undefined) updateData.sessionTime = sessionTime || null;
     if (specialRequestDate !== undefined) updateData.specialRequestDate = specialRequestDate || null;
     if (specialRequestTime !== undefined) updateData.specialRequestTime = specialRequestTime || null;
     if (paymentMethod) {
