@@ -128,6 +128,11 @@ const getBookings = async (req, res) => {
     const { locationId, status, salesPersonId, includeAllSalesPersons } = req.query;
     const user = req.user;
 
+    // Validate user is authenticated
+    if (!user || !user.role) {
+      return errorResponse(res, 'User not authenticated', 401);
+    }
+
     // Build where clause
     const where = {};
 
@@ -221,7 +226,8 @@ const getBookings = async (req, res) => {
     console.error('Get bookings error:', error);
     console.error('Error stack:', error.stack);
     console.error('Error details:', JSON.stringify(error, null, 2));
-    return errorResponse(res, `Internal server error: ${error.message}`, 500);
+    const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+    return errorResponse(res, `Internal server error: ${errorMessage}`, 500);
   }
 };
 
@@ -233,23 +239,13 @@ const getBookingById = async (req, res) => {
     const { id } = req.params;
     const user = req.user;
 
+    // Validate user is authenticated
+    if (!user || !user.role) {
+      return errorResponse(res, 'User not authenticated', 401);
+    }
+
     const booking = await prisma.booking.findUnique({
       where: { id },
-      include: {
-        location: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        salesPerson: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
     });
 
     if (!booking) {
@@ -263,15 +259,60 @@ const getBookingById = async (req, res) => {
       return errorResponse(res, 'You do not have permission to view this booking', 403);
     }
 
+    // Manually enrich booking with location and sales person details
+    let location = null;
+    let salesPerson = null;
+
+    if (booking.locationId) {
+      try {
+        const locationData = await prisma.location.findUnique({
+          where: { id: booking.locationId },
+        });
+        if (locationData) {
+          location = {
+            id: locationData.id,
+            name: locationData.name,
+            code: locationData.code !== undefined ? locationData.code : null,
+          };
+        }
+      } catch (locError) {
+        console.error('Error fetching location:', locError);
+        location = null;
+      }
+    }
+
+    if (booking.salesPersonId) {
+      try {
+        salesPerson = await prisma.user.findUnique({
+          where: { id: booking.salesPersonId },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        });
+      } catch (spError) {
+        console.error('Error fetching sales person:', spError);
+        salesPerson = null;
+      }
+    }
+
+    const bookingWithDetails = {
+      ...booking,
+      location,
+      salesPerson,
+    };
+
     return successResponse(
       res,
-      { booking },
+      { booking: bookingWithDetails },
       'Booking retrieved successfully',
       200
     );
   } catch (error) {
     console.error('Get booking by ID error:', error);
-    return errorResponse(res, 'Internal server error', 500);
+    const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+    return errorResponse(res, `Internal server error: ${errorMessage}`, 500);
   }
 };
 
@@ -432,7 +473,9 @@ const deleteBooking = async (req, res) => {
     }
 
     // Check if user has permission to delete this booking
-    if (user.role !== 'ADMIN' && existingBooking.salesPersonId !== user.id) {
+    // ADMIN, CUSTOMER_SERVICE, and STUDIO can delete any booking
+    // Sales persons can only delete their own bookings
+    if (user.role !== 'ADMIN' && user.role !== 'CUSTOMER_SERVICE' && user.role !== 'STUDIO' && existingBooking.salesPersonId !== user.id) {
       return errorResponse(res, 'You do not have permission to delete this booking', 403);
     }
 
