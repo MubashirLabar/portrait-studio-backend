@@ -125,13 +125,17 @@ const createBooking = async (req, res) => {
  */
 const getBookings = async (req, res) => {
   try {
-    const { locationId, status, salesPersonId } = req.query;
+    const { locationId, status, salesPersonId, includeAllSalesPersons } = req.query;
     const user = req.user;
 
     // Build where clause
     const where = {};
 
     // Role-based filtering
+    // If includeAllSalesPersons is true and locationId is provided, bypass sales person filter
+    // This allows fetching all bookings for a location (e.g., for counting purposes)
+    const shouldIncludeAllSalesPersons = includeAllSalesPersons === 'true' && locationId;
+    
     if (user.role === 'ADMIN') {
       // Admin can see all bookings, optionally filtered by sales person
       if (salesPersonId) {
@@ -139,7 +143,10 @@ const getBookings = async (req, res) => {
       }
     } else if (user.role === 'SALES_PERSON') {
       // Sales persons can only see their own bookings
-      where.salesPersonId = user.id;
+      // Unless includeAllSalesPersons is true (for counting all bookings at a location)
+      if (!shouldIncludeAllSalesPersons) {
+        where.salesPersonId = user.id;
+      }
     }
     // CUSTOMER_SERVICE and other roles can see all bookings (filtered by location if provided)
 
