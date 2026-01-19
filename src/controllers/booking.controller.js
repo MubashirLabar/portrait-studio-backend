@@ -358,6 +358,7 @@ const updateBooking = async (req, res) => {
       status,
       locationId,
       notes,
+      cancellationReason,
       collectionDate,
       collectionTime,
     } = req.body;
@@ -403,6 +404,7 @@ const updateBooking = async (req, res) => {
     if (status) updateData.status = status.toUpperCase();
     if (notes !== undefined) updateData.notes = notes || null;
     if (req.body.studioNotes !== undefined) updateData.studioNotes = req.body.studioNotes || null;
+    if (cancellationReason !== undefined) updateData.cancellationReason = cancellationReason || null;
     if (locationId !== undefined) updateData.locationId = locationId || null;
     if (collectionDate !== undefined) updateData.collectionDate = collectionDate || null;
     if (collectionTime !== undefined) updateData.collectionTime = collectionTime || null;
@@ -575,11 +577,12 @@ const allocateStudioNumber = async (req, res) => {
       nextStudioNumber = allStudioNumbers[allStudioNumbers.length - 1] + 1;
     }
 
-    // Update the booking with the allocated studio number
+    // Update the booking with the allocated studio number and set status to CONFIRMED
     const updatedBooking = await prisma.booking.update({
       where: { id },
       data: {
         studioNumber: nextStudioNumber,
+        status: 'CONFIRMED', // Automatically set status to CONFIRMED when allocating studio number
       },
       select: {
         id: true,

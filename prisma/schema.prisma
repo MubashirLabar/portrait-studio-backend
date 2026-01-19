@@ -89,6 +89,7 @@ model Booking {
   status                BookingStatus @default(BOOKED)
   notes                 String?       // Optional notes for the booking (customer care notes)
   studioNotes           String?       // Optional studio-specific notes
+  cancellationReason    String?       // Reason for cancellation (if status is CANCELLED)
   studioNumber          Int?          // Studio number assigned to the booking (unique per location)
   signaturePath         String?       // Path to saved signature image file
   consentFormSigned     Boolean       @default(false) // Whether consent form has been signed
