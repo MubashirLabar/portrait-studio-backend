@@ -656,7 +656,13 @@ const saveConsentFormSignature = async (req, res) => {
 
     // Save signature image
     const { saveBase64Image } = require('../utils/fileStorage');
-    const signaturePath = saveBase64Image(signature, `booking_${id}`);
+    let signaturePath;
+    try {
+      signaturePath = saveBase64Image(signature, `booking_${id}`);
+    } catch (fileError) {
+      console.error('File storage error:', fileError);
+      return errorResponse(res, `Failed to save signature: ${fileError.message}`, 500);
+    }
 
     // Update booking with signature path and mark consent form as signed
     const updatedBooking = await prisma.booking.update({

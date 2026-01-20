@@ -5,8 +5,14 @@ const path = require('path');
  * Ensure storage directory exists
  */
 const ensureStorageDir = (dirPath) => {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      console.log('Created storage directory:', dirPath);
+    }
+  } catch (error) {
+    console.error('Error creating directory:', dirPath, error);
+    throw new Error(`Failed to create directory ${dirPath}: ${error.message}`);
   }
 };
 
@@ -20,7 +26,13 @@ const saveBase64Image = (base64Data, filename) => {
   try {
     // Create storage directory if it doesn't exist
     const storageDir = path.join(__dirname, '../../storage/signatures');
-    ensureStorageDir(storageDir);
+    
+    try {
+      ensureStorageDir(storageDir);
+    } catch (dirError) {
+      console.error('Failed to create storage directory:', storageDir, dirError);
+      throw new Error(`Cannot create storage directory: ${dirError.message}`);
+    }
 
     // Remove data URL prefix if present
     const base64String = base64Data.includes(',') 
@@ -35,14 +47,19 @@ const saveBase64Image = (base64Data, filename) => {
     const filePath = path.join(storageDir, finalFilename);
 
     // Convert base64 to buffer and save
-    const buffer = Buffer.from(base64String, 'base64');
-    fs.writeFileSync(filePath, buffer);
+    try {
+      const buffer = Buffer.from(base64String, 'base64');
+      fs.writeFileSync(filePath, buffer);
+    } catch (writeError) {
+      console.error('Failed to write file:', filePath, writeError);
+      throw new Error(`Cannot write file: ${writeError.message}`);
+    }
 
     // Return relative path from storage directory
     return `signatures/${finalFilename}`;
   } catch (error) {
     console.error('Error saving base64 image:', error);
-    throw new Error('Failed to save signature image');
+    throw error;
   }
 };
 
