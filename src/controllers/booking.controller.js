@@ -125,13 +125,18 @@ const createBooking = async (req, res) => {
  */
 const getBookings = async (req, res) => {
   try {
-    const { locationId, status, salesPersonId, includeAllSalesPersons } = req.query;
+    const { locationId, status, salesPersonId, includeAllSalesPersons, page, limit } = req.query;
     const user = req.user;
 
     // Validate user is authenticated
     if (!user || !user.role) {
       return errorResponse(res, 'User not authenticated', 401);
     }
+
+    // Pagination parameters
+    const pageNumber = parseInt(page) || 1;
+    const pageSize = parseInt(limit) || 20; // Default 20 items per page
+    const skip = (pageNumber - 1) * pageSize;
 
     // Build where clause
     const where = {};
@@ -165,11 +170,33 @@ const getBookings = async (req, res) => {
       where.status = status.toUpperCase();
     }
 
+    // Get total count for pagination
+    const totalCount = await prisma.booking.count({ where });
+
+    // Get summary statistics from ALL bookings (not just current page)
+    const allBookings = await prisma.booking.findMany({
+      where,
+      select: {
+        status: true,
+      },
+    });
+
+    // Calculate status counts
+    const summary = allBookings.reduce(
+      (acc, booking) => {
+        acc[booking.status] = (acc[booking.status] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
+
     const bookings = await prisma.booking.findMany({
       where,
       orderBy: {
         createdAt: 'desc',
       },
+      skip,
+      take: pageSize,
     });
 
     // Manually enrich bookings with location and sales person details
@@ -218,7 +245,25 @@ const getBookings = async (req, res) => {
 
     return successResponse(
       res,
-      { bookings: bookingsWithDetails },
+      { 
+        bookings: bookingsWithDetails,
+        pagination: {
+          total: totalCount,
+          page: pageNumber,
+          limit: pageSize,
+          totalPages: Math.ceil(totalCount / pageSize),
+        },
+        summary: {
+          total: totalCount,
+          confirmed: summary['CONFIRMED'] || 0,
+          booked: summary['BOOKED'] || 0,
+          tbc: summary['TBC'] || 0,
+          cancelled: summary['CANCELLED'] || 0,
+          noAnswer: summary['NO_ANSWER'] || 0,
+          wlmk: summary['WLMK'] || 0,
+          videoCall: summary['VIDEO_CALL'] || 0,
+        }
+      },
       'Bookings retrieved successfully',
       200
     );
@@ -253,9 +298,9 @@ const getBookingById = async (req, res) => {
     }
 
     // Check if user has permission to view this booking
-    // ADMIN, CUSTOMER_SERVICE, and STUDIO can view any booking
+    // ADMIN, CUSTOMER_SERVICE, STUDIO, and SALES can view any booking
     // Sales persons can only view their own bookings
-    if (user.role !== 'ADMIN' && user.role !== 'CUSTOMER_SERVICE' && user.role !== 'STUDIO' && booking.salesPersonId !== user.id) {
+    if (user.role !== 'ADMIN' && user.role !== 'CUSTOMER_SERVICE' && user.role !== 'STUDIO' && user.role !== 'SALES' && booking.salesPersonId !== user.id) {
       return errorResponse(res, 'You do not have permission to view this booking', 403);
     }
 
@@ -339,9 +384,9 @@ const updateBooking = async (req, res) => {
     }
 
     // Check if user has permission to update this booking
-    // ADMIN, CUSTOMER_SERVICE, and STUDIO can update any booking
+    // ADMIN, CUSTOMER_SERVICE, STUDIO, and SALES can update any booking
     // Sales persons can only update their own bookings
-    if (user.role !== 'ADMIN' && user.role !== 'CUSTOMER_SERVICE' && user.role !== 'STUDIO' && existingBooking.salesPersonId !== user.id) {
+    if (user.role !== 'ADMIN' && user.role !== 'CUSTOMER_SERVICE' && user.role !== 'STUDIO' && user.role !== 'SALES' && existingBooking.salesPersonId !== user.id) {
       return errorResponse(res, 'You do not have permission to update this booking', 403);
     }
 
@@ -475,9 +520,9 @@ const deleteBooking = async (req, res) => {
     }
 
     // Check if user has permission to delete this booking
-    // ADMIN, CUSTOMER_SERVICE, and STUDIO can delete any booking
+    // ADMIN, CUSTOMER_SERVICE, STUDIO, and SALES can delete any booking
     // Sales persons can only delete their own bookings
-    if (user.role !== 'ADMIN' && user.role !== 'CUSTOMER_SERVICE' && user.role !== 'STUDIO' && existingBooking.salesPersonId !== user.id) {
+    if (user.role !== 'ADMIN' && user.role !== 'CUSTOMER_SERVICE' && user.role !== 'STUDIO' && user.role !== 'SALES' && existingBooking.salesPersonId !== user.id) {
       return errorResponse(res, 'You do not have permission to delete this booking', 403);
     }
 

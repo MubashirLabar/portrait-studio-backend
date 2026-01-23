@@ -113,7 +113,7 @@ const createBookingValidation = [
     .withMessage('Invalid payment method'),
   body('status')
     .optional()
-    .isIn(['BOOKED', 'CONFIRMED', 'TBC', 'CANCELLED', 'NO_ANSWER', 'WLMK'])
+    .isIn(['BOOKED', 'CONFIRMED', 'TBC', 'CANCELLED', 'NO_ANSWER', 'WLMK', 'VIDEO_CALL'])
     .withMessage('Invalid status'),
   body('notes').optional().isString().withMessage('Notes must be a string'),
   body('locationId').optional().isUUID().withMessage('Invalid location ID'),
@@ -210,7 +210,7 @@ const updateBookingValidation = [
     .withMessage('Invalid payment method'),
   body('status')
     .optional()
-    .isIn(['BOOKED', 'CONFIRMED', 'TBC', 'CANCELLED', 'NO_ANSWER', 'WLMK'])
+    .isIn(['BOOKED', 'CONFIRMED', 'TBC', 'CANCELLED', 'NO_ANSWER', 'WLMK', 'VIDEO_CALL'])
     .withMessage('Invalid status'),
   body('notes').optional().isString().withMessage('Notes must be a string'),
   body('studioNotes').optional().isString().withMessage('Studio notes must be a string'),

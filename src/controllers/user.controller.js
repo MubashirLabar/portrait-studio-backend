@@ -343,6 +343,148 @@ const getStudioAssistants = async (req, res) => {
   }
 };
 
+/**
+ * Create a new sales user (admin only)
+ */
+const createSales = async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return errorResponse(res, errors.array()[0].msg, 400);
+    }
+
+    // Ensure only admin can create sales users
+    if (req.user.role !== 'ADMIN') {
+      return errorResponse(res, 'Only admin can create sales users', 403);
+    }
+
+    const { name, password } = req.body;
+
+    // Check if user with name already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { name: name.trim() },
+    });
+
+    if (existingUser) {
+      return errorResponse(res, 'User with this name already exists', 409);
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create sales user
+    const salesUser = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: null,
+        password: hashedPassword,
+        role: 'SALES',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return successResponse(
+      res,
+      { user: salesUser },
+      'Sales user created successfully',
+      201
+    );
+  } catch (error) {
+    console.error('Create sales user error:', error);
+    return errorResponse(res, 'Internal server error', 500);
+  }
+};
+
+/**
+ * Get all sales users (admin only)
+ */
+const getSales = async (req, res) => {
+  try {
+    // Ensure only admin can view sales users
+    if (req.user.role !== 'ADMIN') {
+      return errorResponse(res, 'Only admin can view sales users', 403);
+    }
+
+    const salesUsers = await prisma.user.findMany({
+      where: {
+        role: 'SALES',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return successResponse(
+      res,
+      { salesUsers },
+      'Sales users retrieved successfully',
+      200
+    );
+  } catch (error) {
+    console.error('Get sales users error:', error);
+    return errorResponse(res, 'Internal server error', 500);
+  }
+};
+
+/**
+ * Delete a sales user (admin only)
+ */
+const deleteSales = async (req, res) => {
+  try {
+    // Ensure only admin can delete sales users
+    if (req.user.role !== 'ADMIN') {
+      return errorResponse(res, 'Only admin can delete sales users', 403);
+    }
+
+    const { id } = req.params;
+
+    // Check if sales user exists
+    const existingSalesUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!existingSalesUser) {
+      return errorResponse(res, 'Sales user not found', 404);
+    }
+
+    // Check if user is a sales user
+    if (existingSalesUser.role !== 'SALES') {
+      return errorResponse(res, 'User is not a sales user', 400);
+    }
+
+    // Delete the sales user
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    return successResponse(
+      res,
+      null,
+      'Sales user deleted successfully',
+      200
+    );
+  } catch (error) {
+    console.error('Delete sales user error:', error);
+    return errorResponse(res, 'Internal server error', 500);
+  }
+};
+
 module.exports = {
   createSalesPerson,
   getSalesPersons,
@@ -351,5 +493,8 @@ module.exports = {
   getCustomerCares,
   createStudioAssistant,
   getStudioAssistants,
+  createSales,
+  getSales,
+  deleteSales,
 };
 
