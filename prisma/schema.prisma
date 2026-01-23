@@ -65,6 +65,7 @@ enum BookingStatus {
   CANCELLED
   NO_ANSWER
   WLMK
+  VIDEO_CALL
 }
 
 // Payment method enum
