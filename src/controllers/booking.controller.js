@@ -125,7 +125,7 @@ const createBooking = async (req, res) => {
  */
 const getBookings = async (req, res) => {
   try {
-    const { locationId, status, salesPersonId, includeAllSalesPersons, page, limit } = req.query;
+    const { locationId, status, salesPersonId, includeAllSalesPersons, page, limit, hasCollectionDate } = req.query;
     const user = req.user;
 
     // Validate user is authenticated
@@ -158,7 +158,7 @@ const getBookings = async (req, res) => {
         where.salesPersonId = user.id;
       }
     }
-    // CUSTOMER_SERVICE and other roles can see all bookings (filtered by location if provided)
+    // CUSTOMER_SERVICE, SALES and other roles can see all bookings (filtered by location if provided)
 
     // Filter by location if provided
     if (locationId) {
@@ -168,6 +168,16 @@ const getBookings = async (req, res) => {
     // Filter by status if provided
     if (status) {
       where.status = status.toUpperCase();
+    }
+
+    // Filter by collection date if requested
+    if (hasCollectionDate === 'true') {
+      where.collectionDate = {
+        not: null
+      };
+      where.collectionTime = {
+        not: null
+      };
     }
 
     // Get total count for pagination
