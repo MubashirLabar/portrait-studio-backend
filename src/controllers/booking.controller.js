@@ -200,19 +200,63 @@ const getBookings = async (req, res) => {
       {}
     );
 
-    const bookings = await prisma.booking.findMany({
+    // Fetch ALL bookings first (without pagination) to sort properly
+    const allBookingsForSorting = await prisma.booking.findMany({
       where,
-      orderBy: [
-        { sessionDate: 'asc' },
-        { sessionTime: 'asc' },
-      ],
-      skip,
-      take: pageSize,
+      select: {
+        id: true,
+        sessionDate: true,
+        sessionTime: true,
+        specialRequestDate: true,
+        specialRequestTime: true,
+      },
     });
+
+    // Sort by the actual displayed date/time (with fallback logic matching frontend)
+    const sortedBookingIds = allBookingsForSorting
+      .sort((a, b) => {
+        // Use specialRequest date/time if available, otherwise use session date/time
+        const dateA = a.specialRequestDate || a.sessionDate;
+        const dateB = b.specialRequestDate || b.sessionDate;
+        const timeA = a.specialRequestTime || a.sessionTime;
+        const timeB = b.specialRequestTime || b.sessionTime;
+
+        // Handle null dates
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1; // Move nulls to end
+        if (!dateB) return -1;
+
+        // Compare dates first
+        if (dateA !== dateB) {
+          return dateA.localeCompare(dateB); // ISO date strings compare correctly
+        }
+
+        // If dates are equal, compare times
+        if (!timeA && !timeB) return 0;
+        if (!timeA) return 1;
+        if (!timeB) return -1;
+
+        return timeA.localeCompare(timeB); // HH:MM format compares correctly
+      })
+      .map(b => b.id);
+
+    // Get the IDs for the current page
+    const paginatedIds = sortedBookingIds.slice(skip, skip + pageSize);
+
+    // Fetch full booking details for the current page, preserving sort order
+    const bookings = await prisma.booking.findMany({
+      where: {
+        id: { in: paginatedIds },
+      },
+    });
+
+    // Re-sort bookings to match the order of paginatedIds
+    const bookingsMap = new Map(bookings.map(b => [b.id, b]));
+    const sortedBookings = paginatedIds.map(id => bookingsMap.get(id)).filter(Boolean);
 
     // Manually enrich bookings with location and sales person details
     const bookingsWithDetails = await Promise.all(
-      bookings.map(async (booking) => {
+      sortedBookings.map(async (booking) => {
         let location = null;
         let salesPerson = null;
 
