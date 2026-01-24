@@ -202,9 +202,10 @@ const getBookings = async (req, res) => {
 
     const bookings = await prisma.booking.findMany({
       where,
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [
+        { sessionDate: 'asc' },
+        { sessionTime: 'asc' },
+      ],
       skip,
       take: pageSize,
     });
