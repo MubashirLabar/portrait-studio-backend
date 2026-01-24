@@ -227,6 +227,11 @@ const getBookings = async (req, res) => {
           dateB = b.collectionDate;
           timeA = a.collectionTime;
           timeB = b.collectionTime;
+          
+          // Debug: Log comparison values
+          if (dateA && dateB) {
+            console.log(`Comparing: ${dateA} ${timeA} vs ${dateB} ${timeB}`);
+          }
         } else {
           // Other tabs: use specialRequest date/time if available, otherwise use session date/time
           dateA = a.specialRequestDate || a.sessionDate;
