@@ -209,17 +209,31 @@ const getBookings = async (req, res) => {
         sessionTime: true,
         specialRequestDate: true,
         specialRequestTime: true,
+        collectionDate: true,
+        collectionTime: true,
       },
     });
 
     // Sort by the actual displayed date/time (with fallback logic matching frontend)
     const sortedBookingIds = allBookingsForSorting
       .sort((a, b) => {
-        // Use specialRequest date/time if available, otherwise use session date/time
-        const dateA = a.specialRequestDate || a.sessionDate;
-        const dateB = b.specialRequestDate || b.sessionDate;
-        const timeA = a.specialRequestTime || a.sessionTime;
-        const timeB = b.specialRequestTime || b.sessionTime;
+        // If hasCollectionDate is true (Sales tab), sort by collection date/time
+        // Otherwise, use specialRequest date/time if available, then session date/time
+        let dateA, dateB, timeA, timeB;
+        
+        if (hasCollectionDate === 'true') {
+          // Sales tab: sort by collection date and time
+          dateA = a.collectionDate;
+          dateB = b.collectionDate;
+          timeA = a.collectionTime;
+          timeB = b.collectionTime;
+        } else {
+          // Other tabs: use specialRequest date/time if available, otherwise use session date/time
+          dateA = a.specialRequestDate || a.sessionDate;
+          dateB = b.specialRequestDate || b.sessionDate;
+          timeA = a.specialRequestTime || a.sessionTime;
+          timeB = b.specialRequestTime || b.sessionTime;
+        }
 
         // Handle null dates
         if (!dateA && !dateB) return 0;
