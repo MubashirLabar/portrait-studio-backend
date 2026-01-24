@@ -257,6 +257,9 @@ const getBookings = async (req, res) => {
     // Get the IDs for the current page
     const paginatedIds = sortedBookingIds.slice(skip, skip + pageSize);
 
+    // Debug: Log the sorted IDs order
+    console.log('Sorted booking IDs for page:', paginatedIds);
+
     // Fetch full booking details for the current page, preserving sort order
     const bookings = await prisma.booking.findMany({
       where: {
@@ -264,9 +267,15 @@ const getBookings = async (req, res) => {
       },
     });
 
+    // Debug: Log fetched bookings order
+    console.log('Fetched bookings order (before re-sort):', bookings.map(b => ({ id: b.id, collectionDate: b.collectionDate, collectionTime: b.collectionTime })));
+
     // Re-sort bookings to match the order of paginatedIds
     const bookingsMap = new Map(bookings.map(b => [b.id, b]));
     const sortedBookings = paginatedIds.map(id => bookingsMap.get(id)).filter(Boolean);
+
+    // Debug: Log final sorted bookings
+    console.log('Final sorted bookings:', sortedBookings.map(b => ({ id: b.id, collectionDate: b.collectionDate, collectionTime: b.collectionTime })));
 
     // Manually enrich bookings with location and sales person details
     const bookingsWithDetails = await Promise.all(
