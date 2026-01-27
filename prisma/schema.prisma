@@ -131,3 +131,13 @@ model SpecialRequestTime {
   @@map("special_request_times")
 }
 
+// App settings (key-value)
+model AppSetting {
+  key       String   @id
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+

@@ -125,7 +125,7 @@ const createBooking = async (req, res) => {
  */
 const getBookings = async (req, res) => {
   try {
-    const { locationId, status, salesPersonId, includeAllSalesPersons, page, limit, hasCollectionDate } = req.query;
+    const { locationId, status, salesPersonId, includeAllSalesPersons, page, limit, hasCollectionDate, hasStudioNumber } = req.query;
     const user = req.user;
 
     // Validate user is authenticated
@@ -178,6 +178,15 @@ const getBookings = async (req, res) => {
       where.collectionTime = {
         not: null
       };
+    }
+
+    // Filter by studio number assignment if requested
+    if (hasStudioNumber === 'true') {
+      where.studioNumber = {
+        not: null
+      };
+    } else if (hasStudioNumber === 'false') {
+      where.studioNumber = null;
     }
 
     // Get total count for pagination
@@ -634,6 +643,11 @@ const allocateStudioNumber = async (req, res) => {
 
     if (!existingBooking) {
       return errorResponse(res, 'Booking not found', 404);
+    }
+
+    // Require consent form before allocating studio number
+    if (!existingBooking.consentFormSigned) {
+      return errorResponse(res, 'Consent form must be signed before allocating studio number', 400);
     }
 
     // Check if booking has a location
