@@ -125,7 +125,7 @@ const createBooking = async (req, res) => {
  */
 const getBookings = async (req, res) => {
   try {
-    const { locationId, status, salesPersonId, includeAllSalesPersons, page, limit, hasCollectionDate, hasStudioNumber } = req.query;
+    const { locationId, status, salesPersonId, includeAllSalesPersons, page, limit, hasCollectionDate, hasStudioNumber, sortBy } = req.query;
     const user = req.user;
 
     // Validate user is authenticated
@@ -214,6 +214,7 @@ const getBookings = async (req, res) => {
       where,
       select: {
         id: true,
+        createdAt: true,
         sessionDate: true,
         sessionTime: true,
         specialRequestDate: true,
@@ -223,9 +224,17 @@ const getBookings = async (req, res) => {
       },
     });
 
+    const isCreatedAtSort = sortBy === 'createdAt';
+
     // Sort by the actual displayed date/time (with fallback logic matching frontend)
     const sortedBookingIds = allBookingsForSorting
       .sort((a, b) => {
+        if (isCreatedAtSort) {
+          const timeA = a.createdAt ? Date.parse(a.createdAt) : 0;
+          const timeB = b.createdAt ? Date.parse(b.createdAt) : 0;
+          return timeB - timeA; // Newest first
+        }
+
         // If hasCollectionDate is true (Sales tab), sort by collection date/time
         // Otherwise, use specialRequest date/time if available, then session date/time
         let dateA, dateB, timeA, timeB;
